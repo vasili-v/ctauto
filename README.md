@@ -1,2 +1,2 @@
 # ctauto
-C YAML driven Templates
+YAML driven C Templates
