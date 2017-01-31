@@ -1,0 +1,18 @@
+<% full-line metacode surrounded only with spaces in its line %>
+#include <stdio.h>
+
+<% full-line multiline metacode takes several lines:
+   - first line
+   - second line
+   - third line %>
+
+int main(void)
+{
+	const <% in-line metacode %> v = 0;
+
+	printf("Hi there, <% in-line multiline metacode takes several lines:
+ - 1
+ - 2
+ - 3 %>!\n", v);
+	return 0;
+}
