@@ -18,26 +18,19 @@ import argparse
 import yaml
 
 from ctauto.reader import read
-from ctauto.parser import parse
+from ctauto.parser import TemplateParser
 
-def get_arguments():
+def arguments():
     parser = argparse.ArgumentParser(description="YAML driven C Templates")
-    parser.add_argument("-c", "--code",
-                        help='output code file (default template\'s base name '
-                             'with ".c" extension)')
-    parser.add_argument("--header",
-                        help='output header file (default template\'s base '
-                             'name with ".h" extension; if code file is '
-                             'specified but this option isn\'t base name of '
-                             'code file is used with ".h" extension)')
     parser.add_argument("template", help="template files to process")
 
     arguments = parser.parse_args()
-    return arguments.template, arguments.code, arguments.header
+    return arguments.template
 
 def main():
-    template, code, header = get_arguments()
+    template = arguments()
 
-    parse(read(template))
+    parser = TemplateParser()
+    parser.parse(read(template), template)
 
     return 0
