@@ -3,4 +3,6 @@ class Block(object):
         self.content = content
 
 class MetaBlock(Block):
-    pass
+    def __init__(self, content, tokens):
+        super(MetaBlock, self).__init__(content)
+        self.tokens = tokens

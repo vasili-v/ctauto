@@ -1,4 +1,14 @@
-from ctauto.exceptions import CTAutoMissingEndOfMetablockError
+from ctauto.exceptions import CTAutoMissingEndOfMetablockError, \
+                              CTAutoBrokenEndOfMetablockError, \
+                              CTAutoInvalidMetablockError, \
+                              CTAutoInvalidIdError, \
+                              CTAutoInvalidNumberError, \
+                              CTAutoMissingEndOfStringError, \
+                              CTAutoInvalidStringError, \
+                              CTAutoTrailingCharacterAfterQuotedText, \
+                              CTAutoIncompleteEscapeSequence, \
+                              CTAutoInvalidEscapeSequence
+
 from ctauto.blocks import Block, MetaBlock
 
 class _EndOfFileCharacterType(object):
@@ -16,9 +26,19 @@ class Parser(object):
 
 _METABLOCK_START = "<%"
 _METABLOCK_END = "%>"
+_END_OF_LINE = "\n"
+_DOUBLE_QUOTE = "\""
+_SLASH = "\\"
+_WHITESPACES = (" ", "\t", "\v", "\f", "\r", _END_OF_LINE)
+_ESCAPE_SEQUENCES = {"t": "\t", "v": "\v", "f": "\f", "r": "\r",
+                     "n": _END_OF_LINE,
+                     _DOUBLE_QUOTE: _DOUBLE_QUOTE,
+                     _SLASH: _SLASH}
 
 class TemplateParser(Parser):
     def reset(self, content, source):
+        self.line = 1
+
         self.metablock_mark_index = 0
 
         self.source = source
@@ -26,6 +46,9 @@ class TemplateParser(Parser):
         self.start = 0
 
         self.blocks = []
+
+        self.token = ""
+        self.tokens = []
 
         return self.check_metablock_start
 
@@ -37,7 +60,7 @@ class TemplateParser(Parser):
 
             self.start = index
             self.metablock_mark_index = 0
-            return self.check_metablock_end(index, character)
+            return self.skip_white_spaces(index, character)
 
         if character is EndOfFileCharacter:
             if index - self.start > 0:
@@ -48,13 +71,17 @@ class TemplateParser(Parser):
             self.metablock_mark_index += 1
             return self.check_metablock_start
 
+        if character == _END_OF_LINE:
+            self.line += 1
+
         self.metablock_mark_index = 0
         return self.check_metablock_start
 
     def check_metablock_end(self, index, character):
         if self.metablock_mark_index == len(_METABLOCK_END):
             end = index - len(_METABLOCK_END)
-            self.blocks.append(MetaBlock(self.content[self.start:end]))
+            self.blocks.append(MetaBlock(self.content[self.start:end], self.tokens))
+            self.tokens = []
 
             self.start = index
             self.metablock_mark_index = 0
@@ -67,5 +94,116 @@ class TemplateParser(Parser):
             self.metablock_mark_index += 1
             return self.check_metablock_end
 
-        self.metablock_mark_index = 0
-        return self.check_metablock_end
+        sequence = "%s%s" % (_METABLOCK_END[:self.metablock_mark_index], character)
+        raise CTAutoBrokenEndOfMetablockError(self.source, self.line, sequence=repr(sequence))
+
+    def skip_white_spaces(self, index, character):
+        if character is EndOfFileCharacter:
+            raise CTAutoMissingEndOfMetablockError(self.source)
+
+        if character in _WHITESPACES:
+            if character == _END_OF_LINE:
+                self.line += 1
+
+            return self.skip_white_spaces
+
+        if character == _METABLOCK_END[self.metablock_mark_index]:
+            return self.check_metablock_end(index, character)
+
+        if "A" <= character <= "Z" or "a" <= character <= "z" or character == "_":
+            return self.simple_text_token(index, character)
+
+        if "0" <= character <= "9":
+            return self.numeric_token(index, character)
+
+        if character == _DOUBLE_QUOTE:
+            return self.quoted_text_token
+
+        raise CTAutoInvalidMetablockError(self.source, self.line, character=repr(character))
+
+    def simple_text_token(self, index, character):
+        if character is EndOfFileCharacter:
+            raise CTAutoMissingEndOfMetablockError(self.source)
+
+        if character in _WHITESPACES:
+            self.tokens.append(self.token)
+            self.token = ""
+
+            return self.skip_white_spaces(index, character)
+
+        if character == _METABLOCK_END[self.metablock_mark_index]:
+            self.tokens.append(self.token)
+            self.token = ""
+
+            return self.check_metablock_end(index, character)
+
+        if "0" <= character <= "9" or "A" <= character <= "Z" or "a" <= character <= "z" or character == "_":
+            self.token += character
+            return self.simple_text_token
+
+        sequence = "%s%s" % (self.token, character)
+        raise CTAutoInvalidIdError(self.source, self.line, sequence=repr(sequence))
+
+    def quoted_text_token(self, index, character):
+        if character is EndOfFileCharacter:
+            raise CTAutoMissingEndOfStringError(self.source)
+
+        if character == _END_OF_LINE:
+            raise CTAutoInvalidStringError(self.source, self.line)
+
+        if character == _DOUBLE_QUOTE:
+            self.tokens.append(self.token)
+            self.token = ""
+
+            return self.skip_white_spaces_after_quoted_text
+
+        if character == _SLASH:
+            return self.quoted_text_token_escape_sequence
+
+        self.token += character
+        return self.quoted_text_token
+
+    def quoted_text_token_escape_sequence(self, index, character):
+        if character is EndOfFileCharacter:
+            raise CTAutoIncompleteEscapeSequence(self.source)
+
+        if character == _END_OF_LINE:
+            raise CTAutoInvalidEscapeSequence(self.source, self.line)
+
+        self.token += _ESCAPE_SEQUENCES.get(character, "\\%s" % character)
+        return self.quoted_text_token
+
+    def skip_white_spaces_after_quoted_text(self, index, character):
+        if character is EndOfFileCharacter:
+            raise CTAutoMissingEndOfMetablockError(self.source)
+
+        if character in _WHITESPACES:
+            return self.skip_white_spaces(index, character)
+
+        if character == _METABLOCK_END[self.metablock_mark_index]:
+            return self.check_metablock_end(index, character)
+
+        raise CTAutoTrailingCharacterAfterQuotedText(self.source, self.line, character=repr(character))
+
+    def numeric_token(self, index, character):
+        if character is EndOfFileCharacter:
+            raise CTAutoMissingEndOfMetablockError(self.source)
+
+        if character in _WHITESPACES:
+            self.tokens.append(int(self.token))
+            self.token = ""
+
+            return self.skip_white_spaces(index, character)
+
+        if character == _METABLOCK_END[self.metablock_mark_index]:
+            self.tokens.append(int(self.token))
+            self.token = ""
+
+            return self.check_metablock_end(index, character)
+
+        if "0" <= character <= "9":
+            self.token += character
+            return self.numeric_token
+
+        sequence = "%s%s" % (self.token, character)
+        raise CTAutoInvalidNumberError(self.source, self.line, sequence=repr(sequence))
