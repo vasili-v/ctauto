@@ -9,7 +9,8 @@ from ctauto.exceptions import CTAutoMissingEndOfMetablockError, \
                               CTAutoIncompleteEscapeSequence, \
                               CTAutoInvalidEscapeSequence
 
-from ctauto.blocks import Block, MetaBlock
+from ctauto.blocks import SimpleBlock, MetaBlock
+from ctauto.tokens import SimpleTextToken, QuotedTextToken, NumericToken
 
 class _EndOfFileCharacterType(object):
     pass
@@ -23,6 +24,8 @@ class Parser(object):
             state = state(index, character)
 
         state(len(content), EndOfFileCharacter)
+
+        return self.finalize()
 
 _METABLOCK_START = "<%"
 _METABLOCK_END = "%>"
@@ -47,16 +50,23 @@ class TemplateParser(Parser):
 
         self.blocks = []
 
-        self.token = ""
+        self.token = None
         self.tokens = []
 
         return self.check_metablock_start
+
+    def finalize(self):
+        return self.blocks
+
+    def push_token(self):
+        self.tokens.append(self.token)
+        self.token = None
 
     def check_metablock_start(self, index, character):
         if self.metablock_mark_index == len(_METABLOCK_START):
             end = index - len(_METABLOCK_START)
             if end - self.start > 0:
-                self.blocks.append(Block(self.content[self.start:end]))
+                self.blocks.append(SimpleBlock(self.content[self.start:end]))
 
             self.start = index
             self.metablock_mark_index = 0
@@ -64,7 +74,7 @@ class TemplateParser(Parser):
 
         if character is EndOfFileCharacter:
             if index - self.start > 0:
-                self.blocks.append(Block(self.content[self.start:index]))
+                self.blocks.append(SimpleBlock(self.content[self.start:index]))
             return
 
         if character == _METABLOCK_START[self.metablock_mark_index]:
@@ -111,12 +121,15 @@ class TemplateParser(Parser):
             return self.check_metablock_end(index, character)
 
         if "A" <= character <= "Z" or "a" <= character <= "z" or character == "_":
-            return self.simple_text_token(index, character)
+            self.token = SimpleTextToken(self.line, character)
+            return self.simple_text_token
 
         if "0" <= character <= "9":
-            return self.numeric_token(index, character)
+            self.token = NumericToken(self.line, character)
+            return self.numeric_token
 
         if character == _DOUBLE_QUOTE:
+            self.token = QuotedTextToken(self.line)
             return self.quoted_text_token
 
         raise CTAutoInvalidMetablockError(self.source, self.line, character=repr(character))
@@ -126,22 +139,20 @@ class TemplateParser(Parser):
             raise CTAutoMissingEndOfMetablockError(self.source)
 
         if character in _WHITESPACES:
-            self.tokens.append(self.token)
-            self.token = ""
+            self.push_token()
 
             return self.skip_white_spaces(index, character)
 
         if character == _METABLOCK_END[self.metablock_mark_index]:
-            self.tokens.append(self.token)
-            self.token = ""
+            self.push_token()
 
             return self.check_metablock_end(index, character)
 
         if "0" <= character <= "9" or "A" <= character <= "Z" or "a" <= character <= "z" or character == "_":
-            self.token += character
+            self.token.text += character
             return self.simple_text_token
 
-        sequence = "%s%s" % (self.token, character)
+        sequence = "%s%s" % (self.token.text, character)
         raise CTAutoInvalidIdError(self.source, self.line, sequence=repr(sequence))
 
     def quoted_text_token(self, index, character):
@@ -152,15 +163,14 @@ class TemplateParser(Parser):
             raise CTAutoInvalidStringError(self.source, self.line)
 
         if character == _DOUBLE_QUOTE:
-            self.tokens.append(self.token)
-            self.token = ""
+            self.push_token()
 
             return self.skip_white_spaces_after_quoted_text
 
         if character == _SLASH:
             return self.quoted_text_token_escape_sequence
 
-        self.token += character
+        self.token.text += character
         return self.quoted_text_token
 
     def quoted_text_token_escape_sequence(self, index, character):
@@ -170,7 +180,7 @@ class TemplateParser(Parser):
         if character == _END_OF_LINE:
             raise CTAutoInvalidEscapeSequence(self.source, self.line)
 
-        self.token += _ESCAPE_SEQUENCES.get(character, "\\%s" % character)
+        self.token.text += _ESCAPE_SEQUENCES.get(character, "\\%s" % character)
         return self.quoted_text_token
 
     def skip_white_spaces_after_quoted_text(self, index, character):
@@ -190,20 +200,18 @@ class TemplateParser(Parser):
             raise CTAutoMissingEndOfMetablockError(self.source)
 
         if character in _WHITESPACES:
-            self.tokens.append(int(self.token))
-            self.token = ""
+            self.push_token()
 
             return self.skip_white_spaces(index, character)
 
         if character == _METABLOCK_END[self.metablock_mark_index]:
-            self.tokens.append(int(self.token))
-            self.token = ""
+            self.push_token()
 
             return self.check_metablock_end(index, character)
 
         if "0" <= character <= "9":
-            self.token += character
+            self.token.digits += character
             return self.numeric_token
 
-        sequence = "%s%s" % (self.token, character)
+        sequence = "%s%s" % (self.token.digits, character)
         raise CTAutoInvalidNumberError(self.source, self.line, sequence=repr(sequence))

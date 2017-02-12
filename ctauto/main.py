@@ -15,22 +15,30 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
-import yaml
+import os.path
 
 from ctauto.reader import read
 from ctauto.parser import TemplateParser
+from ctauto.engine import run
+from ctauto.renderer import render
 
 def arguments():
     parser = argparse.ArgumentParser(description="YAML driven C Templates")
     parser.add_argument("template", help="template files to process")
+    parser.add_argument("-o", "--output",
+                        help="file to write output to (by default the same as template name with .c extension")
 
     arguments = parser.parse_args()
-    return arguments.template
+
+    directory = os.path.dirname(arguments.template)
+    output = os.path.splitext(arguments.template)[0] + ".c" if arguments.output is None else arguments.output
+
+    return directory, arguments.template, output
 
 def main():
-    template = arguments()
+    directory, template, output = arguments()
 
-    parser = TemplateParser()
-    parser.parse(read(template), template)
+    blocks = TemplateParser().parse(read(template), template)
+    render(run(blocks, directory), output)
 
     return 0

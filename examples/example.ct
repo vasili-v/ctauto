@@ -1,18 +1,12 @@
-<% full-line metacode surrounded only with spaces in its line %>
+<% use "example.yaml" e %>
 #include <stdio.h>
 
-<% full-line multiline metacode takes several lines:
-   - first line
-   - second line
-   - third line %>
+<% example 1 %>
 
 int main(void)
 {
-	const <% in-line metacode %> v = 0;
+	const <% example 2 %> v = 0;
 
-	printf("Hi there, <% in-line multiline metacode takes several lines:
- - 1
- - 2
- - 3 %>!\n", v);
+	printf("Hi there, <%%>%>!\n", v);
 	return 0;
 }

@@ -12,6 +12,7 @@ from ctauto.exceptions import CTAutoMissingEndOfMetablockError, \
                               CTAutoInvalidNumberError
 
 from ctauto.blocks import Block, MetaBlock
+from ctauto.tokens import SimpleTextToken, QuotedTextToken, NumericToken
 from ctauto.parser import EndOfFileCharacter, Parser, TemplateParser
 
 _TEST_CONTENT = "<% metacode 1 %>\n"        \
@@ -37,6 +38,9 @@ class TestParser(unittest.TestCase):
 
                 return self.first
 
+            def finalize(self):
+                return self.indexes, self.characters
+
             def first(self, index, character):
                 self.indexes.append(index)
                 self.characters.append(character)
@@ -58,32 +62,34 @@ class TestParser(unittest.TestCase):
                 return self.third
 
         parser = TestParser()
-        parser.parse(_TEST_CONTENT, "test")
+        indexes, characters = parser.parse(_TEST_CONTENT, "test")
 
         self.assertEqual(parser.source, "test")
         self.assertEqual(parser.content, _TEST_CONTENT)
 
         length = len(_TEST_CONTENT)
-        self.assertEqual(parser.indexes, [0, length-1, length])
+        self.assertEqual(indexes, [0, length-1, length])
 
-        self.assertEqual(parser.characters, ['<', '\n', EndOfFileCharacter])
+        self.assertEqual(characters, ['<', '\n', EndOfFileCharacter])
 
 class TestTemplateParser(unittest.TestCase):
     def test_template_parse(self):
         parser = TemplateParser()
-        parser.parse(_TEST_CONTENT, "test")
+        blocks = parser.parse(_TEST_CONTENT, "test")
 
         self.assertEqual(parser.source, "test")
         self.assertEqual(parser.content, _TEST_CONTENT)
 
-        self.assertEqual(len(parser.blocks), 8)
+        self.assertEqual(len(blocks), 8)
 
-        block = parser.blocks[0]
+        block = blocks[0]
         self.assertIsInstance(block, MetaBlock)
         self.assertEqual(block.content, " metacode 1 ")
-        self.assertEqual(block.tokens, ["metacode", 1])
+        self.assertEqual(block.tokens,
+                         [SimpleTextToken(1, "metacode"),
+                          NumericToken(1, "1")])
 
-        block = parser.blocks[1]
+        block = blocks[1]
         self.assertIsInstance(block, Block)
         self.assertEqual(block.content, "\n"
                                         "#include <stdio.h>\n"
@@ -92,33 +98,39 @@ class TestTemplateParser(unittest.TestCase):
                                         "{\n"
                                         "    ")
 
-        block = parser.blocks[2]
+        block = blocks[2]
         self.assertIsInstance(block, MetaBlock)
         self.assertEqual(block.content, " metacode 2 ")
-        self.assertEqual(block.tokens, ["metacode", 2])
+        self.assertEqual(block.tokens,
+                         [SimpleTextToken(6, "metacode"),
+                          NumericToken(6, "2")])
 
-        block = parser.blocks[3]
+        block = blocks[3]
         self.assertIsInstance(block, Block)
         self.assertEqual(block.content, "\n"
                                         "    // ")
 
-        block = parser.blocks[4]
+        block = blocks[4]
         self.assertIsInstance(block, MetaBlock)
         self.assertEqual(block.content, " metacode 3 ")
-        self.assertEqual(block.tokens, ["metacode", 3])
+        self.assertEqual(block.tokens,
+                         [SimpleTextToken(7, "metacode"),
+                          NumericToken(7, "3")])
 
-        block = parser.blocks[5]
+        block = blocks[5]
         self.assertIsInstance(block, Block)
         self.assertEqual(block.content, "\n"
                                         "    return 0;\n"
                                         "    ")
 
-        block = parser.blocks[6]
+        block = blocks[6]
         self.assertIsInstance(block, MetaBlock)
         self.assertEqual(block.content, " metacode 4 ")
-        self.assertEqual(block.tokens, ["metacode", 4])
+        self.assertEqual(block.tokens,
+                         [SimpleTextToken(9, "metacode"),
+                          NumericToken(9, "4")])
 
-        block = parser.blocks[7]
+        block = blocks[7]
         self.assertIsInstance(block, Block)
         self.assertEqual(block.content, "\n"
                                         "}\n")
@@ -143,16 +155,20 @@ class TestTemplateParser(unittest.TestCase):
 
     def test_multiline_metablock(self):
         parser = TemplateParser()
-        parser.parse("<%\tx\n\ty\n\tz\n\tt%>", "test")
-        self.assertEqual(parser.blocks[0].tokens, ["x", "y", "z", "t"])
+        blocks = parser.parse("<%\tx\n\ty\n\tz\n\tt%>", "test")
+        self.assertEqual(blocks[0].tokens,
+                         [SimpleTextToken(1, "x"),
+                          SimpleTextToken(2, "y"),
+                          SimpleTextToken(3, "z"),
+                          SimpleTextToken(4, "t")])
 
     def test_simple_text_token(self):
         parser = TemplateParser()
-        parser.parse("<%test%>", "test")
-        self.assertEqual(parser.blocks[0].tokens, ["test"])
+        blocks = parser.parse("<%test%>", "test")
+        self.assertEqual(blocks[0].tokens, [SimpleTextToken(1, "test")])
 
-        parser.parse("<% test %>", "test")
-        self.assertEqual(parser.blocks[0].tokens, ["test"])
+        blocks = parser.parse("<% test %>", "test")
+        self.assertEqual(blocks[0].tokens, [SimpleTextToken(1, "test")])
 
         with self.assertRaises(CTAutoMissingEndOfMetablockError):
             parser.parse("<%s test", "test")
@@ -162,11 +178,11 @@ class TestTemplateParser(unittest.TestCase):
 
     def test_quoted_text_token(self):
         parser = TemplateParser()
-        parser.parse("<%\"test\"%>", "test")
-        self.assertEqual(parser.blocks[0].tokens, ["test"])
+        blocks = parser.parse("<%\"test\"%>", "test")
+        self.assertEqual(blocks[0].tokens, [QuotedTextToken(1, "test")])
 
-        parser.parse("<% \"test \\\\ \\\"test\\\" \\n \\t \\r \\a\" %>", "test")
-        self.assertEqual(parser.blocks[0].tokens, ["test \\ \"test\" \n \t \r \\a"])
+        blocks = parser.parse("<% \"test \\\\ \\\"test\\\" \\n \\t \\r \\a\" %>", "test")
+        self.assertEqual(blocks[0].tokens, [QuotedTextToken(1, "test \\ \"test\" \n \t \r \\a")])
 
         with self.assertRaises(CTAutoMissingEndOfStringError):
             parser.parse("<%\"test%>", "test")
@@ -188,11 +204,11 @@ class TestTemplateParser(unittest.TestCase):
 
     def test_numeric_token(self):
         parser = TemplateParser()
-        parser.parse("<% 1234567890 %>", "test")
-        self.assertEqual(parser.blocks[0].tokens, [1234567890])
+        blocks = parser.parse("<% 1234567890 %>", "test")
+        self.assertEqual(blocks[0].tokens, [NumericToken(1, "1234567890")])
 
-        parser.parse("<%1234567890%>", "test")
-        self.assertEqual(parser.blocks[0].tokens, [1234567890])
+        blocks = parser.parse("<%1234567890%>", "test")
+        self.assertEqual(blocks[0].tokens, [NumericToken(1, "1234567890")])
 
         with self.assertRaises(CTAutoMissingEndOfMetablockError):
             parser.parse("<%1234567890", "test")
