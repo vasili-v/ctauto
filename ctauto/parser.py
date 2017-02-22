@@ -33,7 +33,7 @@ _METABLOCK_END = "%>"
 _END_OF_LINE = "\n"
 _DOUBLE_QUOTE = "\""
 _SLASH = "\\"
-_WHITESPACES = (" ", "\t", "\v", "\f", "\r", _END_OF_LINE)
+_WHITESPACES = {" ", "\t", "\v", "\f", "\r", _END_OF_LINE}
 _DOT = "."
 _LEFT_SQUARE_BRACKET = "["
 _RIGHT_SQUARE_BRACKET = "]"
@@ -47,7 +47,7 @@ _SIMPLE_TOKENS = {_DOT: DotToken,
                   _LEFT_SQUARE_BRACKET: LeftSquareBracketToken,
                   _RIGHT_SQUARE_BRACKET: RightSquareBracketToken}
 
-_TERMINATORS = _WHITESPACES + tuple(_SIMPLE_TOKENS.keys())
+_TERMINATORS = _WHITESPACES.union(_SIMPLE_TOKENS)
 
 class TemplateParser(Parser):
     def reset(self, content, source):
