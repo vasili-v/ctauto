@@ -38,3 +38,12 @@ class NumericToken(Token):
 
     def __repr__(self):
         return "<%s(line=%s, digits=%s>" % (type(self).__name__, repr(self.line), repr(self.digits))
+
+class DotToken(Token):
+    pass
+
+class LeftSquareBracketToken(Token):
+    pass
+
+class RightSquareBracketToken(Token):
+    pass

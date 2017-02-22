@@ -10,7 +10,8 @@ from ctauto.exceptions import CTAutoMissingEndOfMetablockError, \
                               CTAutoInvalidEscapeSequence
 
 from ctauto.blocks import SimpleBlock, MetaBlock
-from ctauto.tokens import SimpleTextToken, QuotedTextToken, NumericToken
+from ctauto.tokens import SimpleTextToken, QuotedTextToken, NumericToken, \
+                          DotToken, LeftSquareBracketToken, RightSquareBracketToken
 
 class _EndOfFileCharacterType(object):
     pass
@@ -33,10 +34,20 @@ _END_OF_LINE = "\n"
 _DOUBLE_QUOTE = "\""
 _SLASH = "\\"
 _WHITESPACES = (" ", "\t", "\v", "\f", "\r", _END_OF_LINE)
+_DOT = "."
+_LEFT_SQUARE_BRACKET = "["
+_RIGHT_SQUARE_BRACKET = "]"
+
 _ESCAPE_SEQUENCES = {"t": "\t", "v": "\v", "f": "\f", "r": "\r",
                      "n": _END_OF_LINE,
                      _DOUBLE_QUOTE: _DOUBLE_QUOTE,
                      _SLASH: _SLASH}
+
+_SIMPLE_TOKENS = {_DOT: DotToken,
+                  _LEFT_SQUARE_BRACKET: LeftSquareBracketToken,
+                  _RIGHT_SQUARE_BRACKET: RightSquareBracketToken}
+
+_TERMINATORS = _WHITESPACES + tuple(_SIMPLE_TOKENS.keys())
 
 class TemplateParser(Parser):
     def reset(self, content, source):
@@ -58,8 +69,8 @@ class TemplateParser(Parser):
     def finalize(self):
         return self.blocks
 
-    def push_token(self):
-        self.tokens.append(self.token)
+    def push_token(self, token=None):
+        self.tokens.append(self.token if token is None else token)
         self.token = None
 
     def check_metablock_start(self, index, character):
@@ -117,6 +128,10 @@ class TemplateParser(Parser):
 
             return self.skip_white_spaces
 
+        if character in _SIMPLE_TOKENS:
+            self.push_token(_SIMPLE_TOKENS[character](self.line))
+            return self.skip_white_spaces
+
         if character == _METABLOCK_END[self.metablock_mark_index]:
             return self.check_metablock_end(index, character)
 
@@ -138,7 +153,7 @@ class TemplateParser(Parser):
         if character is EndOfFileCharacter:
             raise CTAutoMissingEndOfMetablockError(self.source)
 
-        if character in _WHITESPACES:
+        if character in _TERMINATORS:
             self.push_token()
 
             return self.skip_white_spaces(index, character)
@@ -187,7 +202,7 @@ class TemplateParser(Parser):
         if character is EndOfFileCharacter:
             raise CTAutoMissingEndOfMetablockError(self.source)
 
-        if character in _WHITESPACES:
+        if character in _TERMINATORS:
             return self.skip_white_spaces(index, character)
 
         if character == _METABLOCK_END[self.metablock_mark_index]:
@@ -199,7 +214,7 @@ class TemplateParser(Parser):
         if character is EndOfFileCharacter:
             raise CTAutoMissingEndOfMetablockError(self.source)
 
-        if character in _WHITESPACES:
+        if character in _TERMINATORS:
             self.push_token()
 
             return self.skip_white_spaces(index, character)

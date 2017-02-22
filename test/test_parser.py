@@ -12,7 +12,8 @@ from ctauto.exceptions import CTAutoMissingEndOfMetablockError, \
                               CTAutoInvalidNumberError
 
 from ctauto.blocks import Block, MetaBlock
-from ctauto.tokens import SimpleTextToken, QuotedTextToken, NumericToken
+from ctauto.tokens import SimpleTextToken, QuotedTextToken, NumericToken, \
+                          DotToken, LeftSquareBracketToken, RightSquareBracketToken
 from ctauto.parser import EndOfFileCharacter, Parser, TemplateParser
 
 _TEST_CONTENT = "<% metacode 1 %>\n"        \
@@ -23,7 +24,7 @@ _TEST_CONTENT = "<% metacode 1 %>\n"        \
                 "    <% metacode 2 %>\n"    \
                 "    // <% metacode 3 %>\n" \
                 "    return 0;\n"           \
-                "    <% metacode 4 %>\n"    \
+                "    <% metacode 4 . [ 1 ] %>\n"    \
                 "}\n"
 
 class TestParser(unittest.TestCase):
@@ -125,10 +126,14 @@ class TestTemplateParser(unittest.TestCase):
 
         block = blocks[6]
         self.assertIsInstance(block, MetaBlock)
-        self.assertEqual(block.content, " metacode 4 ")
+        self.assertEqual(block.content, " metacode 4 . [ 1 ] ")
         self.assertEqual(block.tokens,
                          [SimpleTextToken(9, "metacode"),
-                          NumericToken(9, "4")])
+                          NumericToken(9, "4"),
+                          DotToken(9),
+                          LeftSquareBracketToken(9),
+                          NumericToken(9, "1"),
+                          RightSquareBracketToken(9)])
 
         block = blocks[7]
         self.assertIsInstance(block, Block)
@@ -215,6 +220,26 @@ class TestTemplateParser(unittest.TestCase):
 
         with self.assertRaises(CTAutoInvalidNumberError):
             parser.parse("<% 1234567890test %>", "test")
+
+    def test_simple_token_as_terminator(self):
+        parser = TemplateParser()
+        blocks = parser.parse("<% test.test %>", "test")
+        self.assertEqual(blocks[0].tokens,
+                         [SimpleTextToken(1, "test"),
+                          DotToken(1),
+                          SimpleTextToken(1, "test")])
+
+        blocks = parser.parse("<% 1234567890[test %>", "test")
+        self.assertEqual(blocks[0].tokens,
+                         [NumericToken(1, "1234567890"),
+                          LeftSquareBracketToken(1),
+                          SimpleTextToken(1, "test")])
+
+        blocks = parser.parse("<% \"test\"]test %>", "test")
+        self.assertEqual(blocks[0].tokens,
+                         [QuotedTextToken(1, "test"),
+                          RightSquareBracketToken(1),
+                          SimpleTextToken(1, "test")])
 
 test_suite = unittest.TestSuite([unittest.defaultTestLoader.loadTestsFromTestCase(TestParser),
                                  unittest.defaultTestLoader.loadTestsFromTestCase(TestTemplateParser)])
