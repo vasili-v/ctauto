@@ -41,6 +41,10 @@ class TestEngine(unittest.TestCase):
         result = list(ctauto.engine.run(blocks, None))
         self.assertEqual(result, [block1, block3, SimpleBlock("<%"), block5])
 
+    def test_make_symbols(self):
+        symbols = ctauto.engine.make_symbols(None)
+        self.assertEqual(symbols, {})
+
 test_suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestEngine)
 
 if __name__ == '__main__':

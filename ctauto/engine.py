@@ -26,6 +26,11 @@ def _rectify(blocks):
 
         yield block
 
+def make_symbols(control):
+    symbols = {}
+    return symbols
+
 def run(blocks, directory):
     control, result = _split(blocks)
+    symbols = make_symbols(control)
     return _rectify(result)
