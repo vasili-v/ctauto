@@ -31,7 +31,7 @@ class TestMain(unittest.TestCase):
         mock_parser_class.assert_called_once_with()
         mock_read.assert_called_once_with("template")
         mock_parser.parse.assert_called_once_with("content", "template")
-        mock_run.assert_called_once_with("blocks", "")
+        mock_run.assert_called_once_with("blocks", "", "template")
         mock_render.assert_called_once_with("executed blocks", "template.c")
 
 test_suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestMain)

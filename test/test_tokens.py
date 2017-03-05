@@ -1,6 +1,7 @@
 import unittest
 
-from ctauto.tokens import Token, TextToken, SimpleTextToken, QuotedTextToken, NumericToken
+from ctauto.tokens import Token, TextToken, SimpleTextToken, QuotedTextToken, NumericToken, \
+                          DotToken, LeftSquareBracketToken, RightSquareBracketToken
 
 class TestToken(unittest.TestCase):
     def test_create(self):
@@ -60,6 +61,12 @@ class TestTextToken(unittest.TestCase):
         token = TextToken(1, "test")
         self.assertIn("test", repr(token))
 
+    def test_content(self):
+        token = TextToken(1, "test")
+        content = token.content()
+        self.assertIsInstance(content, basestring)
+        self.assertIn("test", content)
+
 class TestNumericToken(unittest.TestCase):
     def test_create(self):
         token = NumericToken(1, "0123")
@@ -87,9 +94,39 @@ class TestNumericToken(unittest.TestCase):
         token = NumericToken(1, "0123")
         self.assertIn("0123", repr(token))
 
+    def test_content(self):
+        token = NumericToken(1, "0123456789")
+        content = token.content()
+        self.assertIsInstance(content, basestring)
+        self.assertIn("0123456789", content)
+
+class TestDotToken(unittest.TestCase):
+    def test_content(self):
+        token = DotToken(1)
+        content = token.content()
+        self.assertIsInstance(content, basestring)
+        self.assertIn(".", content)
+
+class TestLeftSquareBracketToken(unittest.TestCase):
+    def test_content(self):
+        token = LeftSquareBracketToken(1)
+        content = token.content()
+        self.assertIsInstance(content, basestring)
+        self.assertIn("[", content)
+
+class TestRightSquareBracketToken(unittest.TestCase):
+    def test_content(self):
+        token = RightSquareBracketToken(1)
+        content = token.content()
+        self.assertIsInstance(content, basestring)
+        self.assertIn("]", content)
+
 test_suite = unittest.TestSuite([unittest.defaultTestLoader.loadTestsFromTestCase(TestToken),
                                  unittest.defaultTestLoader.loadTestsFromTestCase(TestTextToken),
-                                 unittest.defaultTestLoader.loadTestsFromTestCase(TestNumericToken)])
+                                 unittest.defaultTestLoader.loadTestsFromTestCase(TestNumericToken),
+                                 unittest.defaultTestLoader.loadTestsFromTestCase(TestDotToken),
+                                 unittest.defaultTestLoader.loadTestsFromTestCase(TestLeftSquareBracketToken),
+                                 unittest.defaultTestLoader.loadTestsFromTestCase(TestRightSquareBracketToken)])
 
 if __name__ == '__main__':
     unittest.main()

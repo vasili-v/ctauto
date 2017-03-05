@@ -39,6 +39,6 @@ def main():
     directory, template, output = arguments()
 
     blocks = TemplateParser().parse(read(template), template)
-    render(run(blocks, directory), output)
+    render(run(blocks, directory, template), output)
 
     return 0

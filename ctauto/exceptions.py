@@ -43,3 +43,18 @@ class CTAutoTrailingCharacterAfterQuotedText(CTAutoSourceLineError):
 
 class CTAutoInvalidNumberError(CTAutoSourceLineError):
     template = "expected number but got %(sequence)s"
+
+class CTAutoInvalidDirective(CTAutoSourceLineError):
+    template = "expected directive but got %(token)s"
+
+class CTAutoUseDirectiveMissingFileName(CTAutoSourceLineError):
+    template = "missing file name for \"use\" directive"
+
+class CTAutoUseDirectiveInvalidFileName(CTAutoSourceLineError):
+    template = "expected file name but got %(token)s"
+
+class CTAutoUseDirectiveTrailingTokens(CTAutoSourceLineError):
+    template = "don't expect tokens after file name"
+
+class CTAutoUseDirectiveDuplicateId(CTAutoSourceLineError):
+    template = "duplicate identifier %(identifier)s"
