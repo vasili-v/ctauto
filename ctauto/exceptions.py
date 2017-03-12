@@ -44,8 +44,8 @@ class CTAutoTrailingCharacterAfterQuotedText(CTAutoSourceLineError):
 class CTAutoInvalidNumberError(CTAutoSourceLineError):
     template = "expected number but got %(sequence)s"
 
-class CTAutoInvalidDirective(CTAutoSourceLineError):
-    template = "expected directive but got %(token)s"
+class CTAutoInvalidDirectiveOrIdentifier(CTAutoSourceLineError):
+    template = "expected directive or identifier but got %(token)s"
 
 class CTAutoUseDirectiveMissingFileName(CTAutoSourceLineError):
     template = "missing file name for \"use\" directive"
@@ -58,3 +58,27 @@ class CTAutoUseDirectiveTrailingTokens(CTAutoSourceLineError):
 
 class CTAutoUseDirectiveDuplicateId(CTAutoSourceLineError):
     template = "duplicate identifier %(identifier)s"
+
+class CTAutoUnknownIdentifier(CTAutoSourceLineError):
+    template = "unknown identifier %(identifier)s"
+
+class CTAutoPathInvalidSeparator(CTAutoSourceLineError):
+    template = "expected dot or bracket after %(path)s but got %(token)s"
+
+class CTAutoPathMissingObjectFieldName(CTAutoSourceLineError):
+    template = "missing object field name in path %(path)s"
+
+class CTAutoPathInvalidObjectFieldName(CTAutoSourceLineError):
+    template = "expected text token after %(path)s but got %(token)s"
+
+class CTAutoPathMissingArrayItemIndex(CTAutoSourceLineError):
+    template = "missing array item index in path %(path)s"
+
+class CTAutoPathInvalidArrayItemIndex(CTAutoSourceLineError):
+    template = "expected numeric token after %(path)s but got %(token)s"
+
+class CTAutoPathMissingRightSquareBracket(CTAutoSourceLineError):
+    template = "missing bracket after %(path)s"
+
+class CTAutoPathInvalidRightSquareBracket(CTAutoSourceLineError):
+    template = "expected bracket after %(path)s but got %(token)s"

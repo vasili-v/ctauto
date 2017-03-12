@@ -1,15 +1,18 @@
 import os.path
+import collections
 
-from ctauto.exceptions import CTAutoInvalidDirective, \
+from ctauto.exceptions import CTAutoInvalidDirectiveOrIdentifier, \
                               CTAutoUseDirectiveMissingFileName, \
                               CTAutoUseDirectiveInvalidFileName, \
                               CTAutoUseDirectiveTrailingTokens, \
-                              CTAutoUseDirectiveDuplicateId
+                              CTAutoUseDirectiveDuplicateId, \
+                              CTAutoUnknownIdentifier
 
 from ctauto.blocks import SimpleBlock
 from ctauto.tokens import TextToken
 from ctauto.symbols import UseFileName
 from ctauto.parser import _METABLOCK_START
+from ctauto.path import Path
 
 def _split(blocks):
     control = []
@@ -42,7 +45,7 @@ def put_use_symbol(block, symbols, source):
 
     token = block.tokens[1]
     if not isinstance(token, TextToken) or not token.text:
-        raise CTAutoUseDirectiveInvalidFileName(source, token.line, token=token.content())
+        raise CTAutoUseDirectiveInvalidFileName(source, token.line, token=token)
 
     name = token.text
     identifier = os.path.splitext(os.path.basename(name))[0]
@@ -58,17 +61,40 @@ def put_use_symbol(block, symbols, source):
 
 def make_symbols(control, source):
     symbols = {}
+    rest = []
     for index, block in control:
         token = block.tokens[0]
         if isinstance(token, TextToken):
             if token.text == _USE_DIRECTIVE:
                 put_use_symbol(block, symbols, source)
+            else:
+                rest.append((index, block))
         else:
-            raise CTAutoInvalidDirective(source, token.line, token=token.content())
+            raise CTAutoInvalidDirectiveOrIdentifier(source, token.line, token=token)
 
-    return symbols
+    return symbols, rest
+
+def xpath_parser(control, symbols, source):
+    items = collections.defaultdict(list)
+    for index, block in control:
+        token = block.tokens[0]
+        if isinstance(token, TextToken):
+            identifier = token.text
+            try:
+                symbol = symbols[identifier]
+            except KeyError:
+                raise CTAutoUnknownIdentifier(source, token.line, identifier=identifier)
+
+            path = Path(symbol)
+            path.parse(block.tokens[1:], source)
+            items[identifier].append((index, path))
+        else:
+            raise CTAutoInvalidDirectiveOrIdentifier(source, token.line, token=token)
+
+    return items
 
 def run(blocks, directory, source):
     control, result = _split(blocks)
-    symbols = make_symbols(control, source)
+    symbols, control = make_symbols(control, source)
+    xpathitems = xpath_parser(control, symbols, source)
     return _rectify(result)

@@ -12,8 +12,8 @@ class TestToken(unittest.TestCase):
         first = Token(1)
         second = Token(1)
 
-        self.assertTrue(first == second, "%s != %s" % (first, second))
-        self.assertFalse(first != second, "%s == %s" % (first, second))
+        self.assertTrue(first == second, "%s != %s" % (repr(first), repr(second)))
+        self.assertFalse(first != second, "%s == %s" % (repr(first), repr(second)))
 
         class Test(Token):
             pass
@@ -21,12 +21,12 @@ class TestToken(unittest.TestCase):
         first = Token(1)
         second = Test(1)
 
-        self.assertFalse(first == second, "%s == %s" % (first, second))
+        self.assertFalse(first == second, "%s == %s" % (repr(first), repr(second)))
 
         first = Token(1)
         second = Token(2)
 
-        self.assertFalse(first == second, "%s == %s" % (first, second))
+        self.assertFalse(first == second, "%s == %s" % (repr(first), repr(second)))
 
     def test_repr(self):
         token = Token(1)
@@ -44,18 +44,18 @@ class TestTextToken(unittest.TestCase):
         first = TextToken(1, "text")
         second = TextToken(1, "text")
 
-        self.assertTrue(first == second, "%s != %s" % (first, second))
-        self.assertFalse(first != second, "%s == %s" % (first, second))
+        self.assertTrue(first == second, "%s != %s" % (repr(first), repr(second)))
+        self.assertFalse(first != second, "%s == %s" % (repr(first), repr(second)))
 
         first = TextToken(1, "text")
         second = TextToken(1, "example")
 
-        self.assertFalse(first == second, "%s == %s" % (first, second))
+        self.assertFalse(first == second, "%s == %s" % (repr(first), repr(second)))
 
         first = SimpleTextToken(1, "text")
         second = QuotedTextToken(1, "text")
 
-        self.assertFalse(first == second, "%s == %s" % (first, second))
+        self.assertFalse(first == second, "%s == %s" % (repr(first), repr(second)))
 
     def test_repr(self):
         token = TextToken(1, "test")
@@ -63,7 +63,7 @@ class TestTextToken(unittest.TestCase):
 
     def test_content(self):
         token = TextToken(1, "test")
-        content = token.content()
+        content = str(token)
         self.assertIsInstance(content, basestring)
         self.assertIn("test", content)
 
@@ -77,18 +77,18 @@ class TestNumericToken(unittest.TestCase):
         first = NumericToken(1, "0123")
         second = NumericToken(1, "0123")
 
-        self.assertTrue(first == second, "%s != %s" % (first, second))
-        self.assertFalse(first != second, "%s == %s" % (first, second))
+        self.assertTrue(first == second, "%s != %s" % (repr(first), repr(second)))
+        self.assertFalse(first != second, "%s == %s" % (repr(first), repr(second)))
 
         first = NumericToken(1, "0123")
         second = NumericToken(1, "3210")
 
-        self.assertFalse(first == second, "%s == %s" % (first, second))
+        self.assertFalse(first == second, "%s == %s" % (repr(first), repr(second)))
 
         first = NumericToken(1, "0123")
         second = QuotedTextToken(1, "0123")
 
-        self.assertFalse(first == second, "%s == %s" % (first, second))
+        self.assertFalse(first == second, "%s == %s" % (repr(first), repr(second)))
 
     def test_repr(self):
         token = NumericToken(1, "0123")
@@ -96,28 +96,28 @@ class TestNumericToken(unittest.TestCase):
 
     def test_content(self):
         token = NumericToken(1, "0123456789")
-        content = token.content()
+        content = str(token)
         self.assertIsInstance(content, basestring)
         self.assertIn("0123456789", content)
 
 class TestDotToken(unittest.TestCase):
     def test_content(self):
         token = DotToken(1)
-        content = token.content()
+        content = str(token)
         self.assertIsInstance(content, basestring)
         self.assertIn(".", content)
 
 class TestLeftSquareBracketToken(unittest.TestCase):
     def test_content(self):
         token = LeftSquareBracketToken(1)
-        content = token.content()
+        content = str(token)
         self.assertIsInstance(content, basestring)
         self.assertIn("[", content)
 
 class TestRightSquareBracketToken(unittest.TestCase):
     def test_content(self):
         token = RightSquareBracketToken(1)
-        content = token.content()
+        content = str(token)
         self.assertIsInstance(content, basestring)
         self.assertIn("]", content)
 

@@ -22,7 +22,7 @@ class TextToken(Token):
     def __repr__(self):
         return "<%s(line=%s, text=%s)>" % (type(self).__name__, repr(self.line), repr(self.text))
 
-    def content(self):
+    def __str__(self):
         return '"%s"' % self.text
 
 class SimpleTextToken(TextToken):
@@ -42,17 +42,17 @@ class NumericToken(Token):
     def __repr__(self):
         return "<%s(line=%s, digits=%s>" % (type(self).__name__, repr(self.line), repr(self.digits))
 
-    def content(self):
+    def __str__(self):
         return "%s" % self.digits
 
 class DotToken(Token):
-    def content(self):
+    def __str__(self):
         return '"."'
 
 class LeftSquareBracketToken(Token):
-    def content(self):
+    def __str__(self):
         return '"["'
 
 class RightSquareBracketToken(Token):
-    def content(self):
+    def __str__(self):
         return '"]"'
