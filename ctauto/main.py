@@ -14,9 +14,11 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import sys
 import argparse
 import os.path
 
+from ctauto.exceptions import CTAutoError
 from ctauto.reader import read
 from ctauto.parser import TemplateParser
 from ctauto.engine import run
@@ -36,9 +38,12 @@ def arguments():
     return directory, arguments.template, output
 
 def main():
-    directory, template, output = arguments()
+    try:
+        directory, template, output = arguments()
 
-    blocks = TemplateParser().parse(read(template), template)
-    render(run(blocks, directory, template), output)
+        blocks = TemplateParser().parse(read(template), template)
+        render(run(blocks, directory, template), output)
+    except CTAutoError as error:
+        print >> sys.stdout, "%s" % error
 
     return 0

@@ -1,1 +1,3 @@
-"test"
+- const: "int i = 0;"
+- format: "%d"
+- type: int

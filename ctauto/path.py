@@ -9,7 +9,8 @@ from ctauto.exceptions import CTAutoPathInvalidSeparator, \
 from ctauto.tokens import TextToken, NumericToken, DotToken, LeftSquareBracketToken, RightSquareBracketToken
 
 class Path(object):
-    def __init__(self, root, refs=None):
+    def __init__(self, line, root, refs=None):
+        self.line = line
         self.root = root
         self.refs = refs if refs is not None else []
 
@@ -28,7 +29,7 @@ class Path(object):
 
     def __repr__(self):
         refs = ", ".join(["\"%s\"" % ref for ref in self.refs])
-        return "<%s(root=%s, refs=[%s])>" % (type(self).__name__, repr(self.root), refs)
+        return "<%s(line=%s, root=%s, refs=[%s])>" % (type(self).__name__, self.line, repr(self.root), refs)
 
     def __str__(self):
         if self.refs:
@@ -100,6 +101,9 @@ class ObjectFieldRef(Ref):
 
         return ".%s" % self.name
 
+    def __call__(self, content):
+        return content[self.token.text]
+
 class ArrayItemRef(Ref):
     def __init__(self, token, complete=False):
         super(ArrayItemRef, self).__init__(token)
@@ -119,3 +123,6 @@ class ArrayItemRef(Ref):
             return "[%s" % self.index
 
         return "[%s]" % self.index
+
+    def __call__(self, content):
+        return content[self.index]

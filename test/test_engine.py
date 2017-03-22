@@ -1,4 +1,5 @@
 import unittest
+import mock
 
 from ctauto.exceptions import CTAutoInvalidDirectiveOrIdentifier, \
                               CTAutoUseDirectiveMissingFileName, \
@@ -57,8 +58,10 @@ class TestEngine(unittest.TestCase):
 
         blocks = [block1, block2, block3, block4, block5, block6]
 
-        result = list(ctauto.engine.run(blocks, None, "template"))
-        self.assertEqual(result, [block1, block4, SimpleBlock("<%"), block6])
+        with mock.patch('__builtin__.open', mock.mock_open(read_data="[1, 2, 3, 4, 5]"), create=True) as m:
+            result = list(ctauto.engine.run(blocks, None, "template"))
+
+        self.assertEqual(result, [block1, SimpleBlock("4"), block4, SimpleBlock("<%"), block6])
 
     def test_make_symbols(self):
         use = MetaBlock("use \"template.yaml\"", [SimpleTextToken(2, "use"), QuotedTextToken(2, "template.yaml")])
@@ -131,9 +134,9 @@ class TestEngine(unittest.TestCase):
 
         xpathitems = ctauto.engine.xpath_parser([(2, path_block1), (3, path_block2)], symbols, "template")
 
-        path1 = Path(use, [ObjectFieldRef(SimpleTextToken(3, "test"))])
-        path2 = Path(use, [ObjectFieldRef(SimpleTextToken(4, "example")),
-                           ArrayItemRef(NumericToken(4, "4"), True)])
+        path1 = Path(3, use, [ObjectFieldRef(SimpleTextToken(3, "test"))])
+        path2 = Path(4, use, [ObjectFieldRef(SimpleTextToken(4, "example")),
+                              ArrayItemRef(NumericToken(4, "4"), True)])
         self.assertEqual(dict(xpathitems), {"template": [(2, path1), (3, path2)]})
 
     def test_xpath_parser_invalid_identifier(self):

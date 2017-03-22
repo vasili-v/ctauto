@@ -1,12 +1,15 @@
 import os.path
 import collections
+import yaml
 
 from ctauto.exceptions import CTAutoInvalidDirectiveOrIdentifier, \
                               CTAutoUseDirectiveMissingFileName, \
                               CTAutoUseDirectiveInvalidFileName, \
                               CTAutoUseDirectiveTrailingTokens, \
                               CTAutoUseDirectiveDuplicateId, \
-                              CTAutoUnknownIdentifier
+                              CTAutoUnknownIdentifier, \
+                              CTAutoWrongPath, \
+                              CTAutoWrongEntity
 
 from ctauto.blocks import SimpleBlock
 from ctauto.tokens import TextToken
@@ -85,7 +88,7 @@ def xpath_parser(control, symbols, source):
             except KeyError:
                 raise CTAutoUnknownIdentifier(source, token.line, identifier=identifier)
 
-            path = Path(symbol)
+            path = Path(token.line, symbol)
             path.parse(block.tokens[1:], source)
             items[identifier].append((index, path))
         else:
@@ -93,8 +96,32 @@ def xpath_parser(control, symbols, source):
 
     return items
 
+def replace(blocks, xpathitems, symbols, source):
+    for identifier, items in xpathitems.iteritems():
+        symbol = symbols[identifier]
+        with open(symbol.name) as f:
+            content = yaml.load(f)
+
+        for index, path in items:
+            entity = content
+            for i, ref in enumerate(path.refs):
+                try:
+                    entity = ref(entity)
+                except:
+                    raise CTAutoWrongPath(source, ref.token.line, name=symbol.name,
+                                          path=Path(path.line, path.root, path.refs[:i+1]))
+
+            # PEP 285.6 Should bool inherit from int? => Yes. So check it for bool explicitly
+            if isinstance(entity, bool) or not isinstance(entity, (basestring, int, long)):
+                raise CTAutoWrongEntity(source, path.line, name=symbol.name,
+                                        path=path, entity=type(entity).__name__)
+
+            blocks[index] = SimpleBlock("%s" % entity)
+
+    return blocks
+
 def run(blocks, directory, source):
     control, result = _split(blocks)
     symbols, control = make_symbols(control, source)
     xpathitems = xpath_parser(control, symbols, source)
-    return _rectify(result)
+    return _rectify(replace(result, xpathitems, symbols, source))

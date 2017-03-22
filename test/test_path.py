@@ -16,7 +16,7 @@ class TestPath(unittest.TestCase):
     def test_create(self):
         root = UseFileName(2, "template", "template.yaml")
         refs = [ObjectFieldRef(SimpleTextToken(1, "test")), ArrayItemRef(NumericToken(1, "1"), True)]
-        path = Path(root, refs)
+        path = Path(1, root, refs)
         self.assertEqual(path.root, root)
         self.assertEqual(path.refs, refs)
 
@@ -28,25 +28,28 @@ class TestPath(unittest.TestCase):
         refs2 = [ObjectFieldRef(SimpleTextToken(4, "example")), ArrayItemRef(NumericToken(4, "4"), True)]
         refs3 = [ObjectFieldRef(SimpleTextToken(5, "example"))]
 
-        first = Path(root1, refs1)
-        second = Path(root1, refs1)
+        first = Path(1, root1, refs1)
+        second = Path(1, root1, refs1)
 
         self.assertTrue(first == second, "%s != %s" % (repr(first), repr(second)))
         self.assertFalse(first != second, "%s == %s" % (repr(first), repr(second)))
 
-        second = Path(root2, refs1)
+        second = Path(2, root1, refs1)
+        self.assertTrue(first == second, "%s == %s" % (repr(first), repr(second)))
+
+        second = Path(1, root2, refs1)
         self.assertFalse(first == second, "%s == %s" % (repr(first), repr(second)))
 
-        second = Path(root1, refs2)
+        second = Path(1, root1, refs2)
         self.assertFalse(first == second, "%s == %s" % (repr(first), repr(second)))
 
-        second = Path(root1, refs3)
+        second = Path(1, root1, refs3)
         self.assertFalse(first == second, "%s == %s" % (repr(first), repr(second)))
 
     def test_repr(self):
         root = UseFileName(1, "test", "test.yaml")
         ref = ObjectFieldRef(SimpleTextToken(3, "test"))
-        path = Path(root, [ref])
+        path = Path(1, root, [ref])
 
         self.assertIn("Path", repr(path))
         self.assertIn(repr(root), repr(path))
@@ -56,10 +59,10 @@ class TestPath(unittest.TestCase):
         root = UseFileName(1, "test", "test.yaml")
         ref = ObjectFieldRef(SimpleTextToken(3, "test"))
 
-        path = Path(root)
+        path = Path(1, root)
         self.assertIn(root.identifier, str(path))
 
-        path = Path(root, [ref])
+        path = Path(1, root, [ref])
         self.assertIn(root.identifier, str(path))
         self.assertIn(str(ref), str(path))
 
@@ -69,13 +72,13 @@ class TestPath(unittest.TestCase):
         number = NumericToken(1, "123")
         tokens = [DotToken(1), text, LeftSquareBracketToken(1), number, RightSquareBracketToken(1)]
 
-        path = Path(root)
+        path = Path(1, root)
         path.parse(tokens, "template")
 
         self.assertEqual(path.refs, [ObjectFieldRef(text), ArrayItemRef(number, True)])
 
     def test_parse_invalid_separator(self):
-        path = Path(UseFileName(1, "test", "test.yaml"))
+        path = Path(1, UseFileName(1, "test", "test.yaml"))
         text = SimpleTextToken(1, "test")
 
         with self.assertRaises(CTAutoPathInvalidSeparator) as ctx:
@@ -85,14 +88,14 @@ class TestPath(unittest.TestCase):
         self.assertIn(str(text), str(ctx.exception))
 
     def test_parse_missing_name(self):
-        path = Path(UseFileName(1, "test", "test.yaml"))
+        path = Path(1, UseFileName(1, "test", "test.yaml"))
         with self.assertRaises(CTAutoPathMissingObjectFieldName) as ctx:
             path.parse([DotToken(1)], "template")
 
         self.assertIn(str(path), str(ctx.exception))
 
     def test_parse_invalid_name(self):
-        path = Path(UseFileName(1, "test", "test.yaml"))
+        path = Path(1, UseFileName(1, "test", "test.yaml"))
         dot = DotToken(1)
         with self.assertRaises(CTAutoPathInvalidObjectFieldName) as ctx:
             path.parse([dot, dot], "template")
@@ -101,14 +104,14 @@ class TestPath(unittest.TestCase):
         self.assertIn(str(dot), str(ctx.exception))
 
     def test_parse_missing_index(self):
-        path = Path(UseFileName(1, "test", "test.yaml"))
+        path = Path(1, UseFileName(1, "test", "test.yaml"))
         with self.assertRaises(CTAutoPathMissingArrayItemIndex) as ctx:
             path.parse([LeftSquareBracketToken(1)], "template")
 
         self.assertIn(str(path), str(ctx.exception))
 
     def test_parse_invalid_index(self):
-        path = Path(UseFileName(1, "test", "test.yaml"))
+        path = Path(1, UseFileName(1, "test", "test.yaml"))
         bracket = LeftSquareBracketToken(1)
         with self.assertRaises(CTAutoPathInvalidArrayItemIndex) as ctx:
             path.parse([bracket, bracket], "template")
@@ -117,14 +120,14 @@ class TestPath(unittest.TestCase):
         self.assertIn(str(bracket), str(ctx.exception))
 
     def test_parse_missing_bracket(self):
-        path = Path(UseFileName(1, "test", "test.yaml"))
+        path = Path(1, UseFileName(1, "test", "test.yaml"))
         with self.assertRaises(CTAutoPathMissingRightSquareBracket) as ctx:
             path.parse([LeftSquareBracketToken(1), NumericToken(1, "1")], "template")
 
         self.assertIn(str(path), str(ctx.exception))
 
     def test_parse_invalid_bracket(self):
-        path = Path(UseFileName(1, "test", "test.yaml"))
+        path = Path(1, UseFileName(1, "test", "test.yaml"))
         bracket = LeftSquareBracketToken(1)
         with self.assertRaises(CTAutoPathInvalidRightSquareBracket) as ctx:
             path.parse([bracket, NumericToken(1, "1"), bracket], "template")
@@ -180,6 +183,12 @@ class TestObjectFieldRef(unittest.TestCase):
         content = str(ref)
         self.assertEqual(content, ".")
 
+    def test_call(self):
+        token = SimpleTextToken(1, "test")
+
+        ref = ObjectFieldRef(token)
+        self.assertEqual(ref({"test": "example"}), "example")
+
 class TestArrayItemRef(unittest.TestCase):
     def test_create(self):
         token = NumericToken(1, "1")
@@ -219,6 +228,12 @@ class TestArrayItemRef(unittest.TestCase):
         content = str(ref)
         self.assertIn(token.digits, content)
         self.assertIn("]", content)
+
+    def test_call(self):
+        token = NumericToken(1, "1")
+
+        ref = ArrayItemRef(token)
+        self.assertEqual(ref(["example", "test"]), "test")
 
 test_suite = unittest.TestSuite([unittest.defaultTestLoader.loadTestsFromTestCase(TestPath),
                                  unittest.defaultTestLoader.loadTestsFromTestCase(TestRef),

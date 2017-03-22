@@ -82,3 +82,9 @@ class CTAutoPathMissingRightSquareBracket(CTAutoSourceLineError):
 
 class CTAutoPathInvalidRightSquareBracket(CTAutoSourceLineError):
     template = "expected bracket after %(path)s but got %(token)s"
+
+class CTAutoWrongPath(CTAutoSourceLineError):
+    template = "can't get anything by \"%(path)s\" from %(name)s"
+
+class CTAutoWrongEntity(CTAutoSourceLineError):
+    template = "expected string or number at \"%(path)s\" in %(name)s but got %(entity)s"
